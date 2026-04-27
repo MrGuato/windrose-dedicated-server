@@ -115,7 +115,3 @@ The compose file ships with `no-new-privileges`, `cap_drop: ALL`, and a tmpfs-mo
 ## License
 
 MIT. See [LICENSE](LICENSE).
-
-## Credits
-
-Approach inspired by [UberDudePL/windrose-dedicated-server-docker](https://github.com/UberDudePL/windrose-dedicated-server-docker).
