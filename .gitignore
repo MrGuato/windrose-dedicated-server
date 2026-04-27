@@ -1,0 +1,9 @@
+.env
+data/
+steam-home/
+backups/
+*.log
+*.tar.gz
+.idea/
+.vscode/
+.DS_Store

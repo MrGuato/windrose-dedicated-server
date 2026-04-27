@@ -1,0 +1,15 @@
+.git
+.github
+.gitignore
+.dockerignore
+.env
+data/
+steam-home/
+backups/
+docs/
+scripts/
+README.md
+LICENSE
+Makefile
+*.md
+*.tar.gz
