@@ -22,7 +22,7 @@ SERVER_NOTE=${SERVER_NOTE:-}
 SERVER_PASSWORD=${SERVER_PASSWORD:-}
 MAX_PLAYERS=${MAX_PLAYERS:-4}
 P2P_PROXY_ADDRESS=${P2P_PROXY_ADDRESS:-127.0.0.1}
-FIRST_RUN_TIMEOUT=${FIRST_RUN_TIMEOUT:-120}
+FIRST_RUN_TIMEOUT=${FIRST_RUN_TIMEOUT:-180}
 
 SERVER_DESC="$SERVERDIR/R5/ServerDescription.json"
 SERVER_PID=""
@@ -123,6 +123,8 @@ first_run_generate_config() {
 
     if [ ! -f "$SERVER_DESC" ]; then
         log "WARNING: ServerDescription.json was not generated within ${FIRST_RUN_TIMEOUT}s"
+        log "Wine output:"
+        tail -n 40 /tmp/windrose-first-run.log 2>/dev/null || true
     fi
 }
 

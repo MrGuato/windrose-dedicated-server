@@ -25,11 +25,7 @@ https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_C
 
 sudo apt update
 sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-```
 
-Add your user to the docker group so you can run docker without sudo:
-
-```bash
 sudo usermod -aG docker "$USER"
 newgrp docker
 docker run --rm hello-world
@@ -38,64 +34,69 @@ docker run --rm hello-world
 ## 2. Clone the repo
 
 ```bash
-sudo mkdir -p /opt && sudo chown "$USER":"$USER" /opt
-cd /opt
 git clone https://github.com/MrGuato/windrose-dedicated-server.git
 cd windrose-dedicated-server
+chmod +x windrose
 ```
 
-## 3. Create the environment file
+## 3. Run setup
+
+```bash
+./windrose setup
+```
+
+The setup wizard prompts for server name, password, max players, and ports. It writes `.env` and creates the bind-mount directories with the correct ownership.
+
+To skip the wizard and edit the env file by hand:
 
 ```bash
 cp .env.example .env
 nano .env
-```
-
-At a minimum, set `SERVER_NAME` and `SERVER_PASSWORD`. See [Configuration]({{ '/configuration' | relative_url }}) for the full list of variables.
-
-## 4. Prepare bind mounts
-
-The container runs as UID 1000 internally. Host directories need to match:
-
-```bash
-mkdir -p data steam-home
+mkdir -p data steam-home backups logs
 sudo chown -R 1000:1000 data steam-home
 ```
 
-## 5. Start the server
+## 4. Start the server
 
 ```bash
-docker compose up -d
-docker compose logs -f windrose
+./windrose start
 ```
 
-First boot downloads roughly 3 GB of game files via SteamCMD. When you see `Starting Windrose dedicated server` in the logs, the server is up and ready.
+That pulls the prebuilt image from GHCR (or uses your local build), starts the container, and tails logs. First boot pulls roughly 3 GB of game files via SteamCMD.
 
-## 6. Get your Invite Code
+When you see this in the logs the server is up:
+
+```
+[windrose] Starting Windrose dedicated server
+```
+
+## 5. Get the invite code
 
 ```bash
-jq -r '.ServerDescription_Persistent.InviteCode' data/R5/ServerDescription.json
+./windrose invite
 ```
 
 Share that code with players. They use it in the game's Join via Code menu.
 
-## Optional: prebuilt image
+## Optional: build the image locally
 
-By default `docker-compose.yml` uses the prebuilt image from GHCR:
-
-```yaml
-image: ghcr.io/mrguato/windrose-dedicated-server:latest
-```
-
-For production, pin to a specific tag:
-
-```yaml
-image: ghcr.io/mrguato/windrose-dedicated-server:v1.0.0
-```
-
-To build locally instead, comment out the `image:` line and uncomment `build: .`, then:
+If you'd rather build from source than pull from GHCR:
 
 ```bash
-docker compose build
-docker compose up -d
+./windrose build
+IMAGE_REPOSITORY=windrose-dedicated-server IMAGE_TAG=dev ./windrose start
+```
+
+The build takes about 10-15 minutes on a first run because of the apt install of Wine and i386 libraries. Subsequent builds use Docker's layer cache.
+
+## Optional: scheduled backups
+
+```bash
+crontab -e
+```
+
+Add:
+
+```cron
+0 4 * * * cd /opt/windrose-dedicated-server && ./windrose backup >> logs/backup.log 2>&1
 ```

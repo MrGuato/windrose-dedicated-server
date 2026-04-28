@@ -4,7 +4,6 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 ARCHIVE="${1:-}"
-COMPOSE=${COMPOSE:-docker compose}
 
 if [ -z "$ARCHIVE" ] || [ ! -f "$ARCHIVE" ]; then
     echo "Usage: $0 <backup-archive.tar.gz>"
@@ -13,12 +12,12 @@ if [ -z "$ARCHIVE" ] || [ ! -f "$ARCHIVE" ]; then
 fi
 
 echo "[restore] Stopping container"
-$COMPOSE stop
+docker compose stop
 
 echo "[restore] Extracting $ARCHIVE"
 tar -xzf "$ARCHIVE"
 
 echo "[restore] Starting container"
-$COMPOSE start
+docker compose start
 
 echo "[restore] Done"

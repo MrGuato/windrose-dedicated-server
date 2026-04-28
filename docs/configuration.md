@@ -6,28 +6,30 @@ nav_order: 3
 
 # Configuration
 
-All server config is driven by environment variables in `.env`. The entrypoint patches `data/R5/ServerDescription.json` from those variables on every container start, so you do not edit JSON by hand for normal use.
+All server config is driven by environment variables in `.env`. The entrypoint patches `data/R5/ServerDescription.json` from those variables on every container start, so you never edit JSON by hand for normal use.
 
 ## Apply config changes
 
 ```bash
 nano .env
-make update     # or: docker compose up -d --force-recreate
+./windrose update
 ```
+
+`update` recreates the container, which re-applies the env to the JSON.
 
 ## Variable reference
 
 ### Server identity
 
-| Variable          | Default | Description |
-| ----------------- | ------- | ----------- |
-| `SERVER_NAME`     | _empty_ | Display name shown to players |
-| `SERVER_NOTE`     | _empty_ | Optional description or MOTD |
-| `SERVER_PASSWORD` | _empty_ | Set to require a password to join |
-| `MAX_PLAYERS`     | `4`     | Maximum concurrent players |
-| `INVITE_CODE`     | _empty_ | Override the auto-generated invite code |
+| Variable          | Default                  | Description |
+| ----------------- | ------------------------ | ----------- |
+| `SERVER_NAME`     | `MrGuato Windrose Server`| Display name shown to players |
+| `SERVER_NOTE`     | _empty_                  | Optional description or MOTD |
+| `SERVER_PASSWORD` | _empty_                  | Set to require a password to join |
+| `MAX_PLAYERS`     | `4`                      | Maximum concurrent players |
+| `INVITE_CODE`     | _empty_                  | Override the auto-generated code |
 
-When `SERVER_PASSWORD` is empty, password protection is disabled. When set, it is enabled automatically.
+When `SERVER_PASSWORD` is empty the server is open. When set, password protection is enabled automatically.
 
 ### Network
 
@@ -47,23 +49,33 @@ When `SERVER_PASSWORD` is empty, password protection is disabled. When set, it i
 | `WINDROSE_APP_ID` | `4129620`   | Steam AppID for the Windrose dedicated server |
 | `UPDATE_ON_START` | `true`      | Run SteamCMD validate on every container start |
 
-### Runtime
+### Image and runtime
 
-| Variable             | Default | Description |
-| -------------------- | ------- | ----------- |
-| `PUID`               | `1000`  | UID inside container; match host directory ownership |
-| `PGID`               | `1000`  | GID inside container |
-| `GENERATE_SETTINGS`  | `true`  | Auto-generate and patch `ServerDescription.json` |
-| `FIRST_RUN_TIMEOUT`  | `120`   | Seconds to wait for first-run config generation |
+| Variable             | Default                                      | Description |
+| -------------------- | -------------------------------------------- | ----------- |
+| `IMAGE_REPOSITORY`   | `ghcr.io/mrguato/windrose-dedicated-server`  | Image source |
+| `IMAGE_TAG`          | `latest`                                     | Image tag (use `vX.Y.Z` for production) |
+| `CONTAINER_NAME`     | `windrose`                                   | Docker container name |
+| `HOSTNAME_OVERRIDE`  | `windrose`                                   | Container hostname |
+| `PUID`               | `1000`                                       | UID inside container; match host directory ownership |
+| `PGID`               | `1000`                                       | GID inside container |
+| `GENERATE_SETTINGS`  | `true`                                       | Auto-generate and patch `ServerDescription.json` |
+
+### Wine
+
+| Variable      | Default               | Description |
+| ------------- | --------------------- | ----------- |
+| `WINEARCH`    | `win64`               | Wine architecture |
+| `WINEPREFIX`  | `/home/steam/.wine`   | Wine prefix path inside container |
 
 ## Manual JSON editing
 
-If you need to set fields the env-based patcher does not expose, stop the container first or your edits will be overwritten:
+If you need a field the env-based patcher does not expose, stop the container first or your edits will be overwritten:
 
 ```bash
-docker compose stop
+./windrose stop
 nano data/R5/ServerDescription.json
-docker compose start
+./windrose start
 ```
 
 To prevent the entrypoint from patching the file at all, set `GENERATE_SETTINGS=false` in `.env`.
@@ -75,27 +87,14 @@ To prevent the entrypoint from patching the file at all, set `GENERATE_SETTINGS=
 | `./data`        | `/data`        | Server files, saves, `ServerDescription.json` |
 | `./steam-home`  | `/home/steam`  | Wine prefix, SteamCMD cache |
 
-Both must be owned by `1000:1000` on the host.
+Both must be owned by `1000:1000` on the host. `./windrose setup` does this automatically.
 
-## Hardening
+## Pinning to a specific image version
 
-The compose file ships with these defaults:
+For production, pin a specific tag in `.env`:
 
-```yaml
-security_opt:
-  - no-new-privileges:true
-cap_drop:
-  - ALL
-tmpfs:
-  - /tmp:rw,nosuid,nodev,size=128m
+```ini
+IMAGE_TAG=v1.0.0
 ```
 
-Resource limits are present but commented out. Enable per host:
-
-```yaml
-deploy:
-  resources:
-    limits:
-      memory: 12G
-      cpus: "4.0"
-```
+Then `./windrose update` only pulls that exact version. List available tags at the [Container image page](https://github.com/MrGuato/windrose-dedicated-server/pkgs/container/windrose-dedicated-server).

@@ -1,0 +1,239 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$REPO_DIR"
+
+COMPOSE_BIN="docker compose"
+COMPOSE_FILES="-f docker-compose.yml"
+SERVICE="windrose"
+
+C_RESET='\033[0m'
+C_BOLD='\033[1m'
+C_RED='\033[31m'
+C_GREEN='\033[32m'
+C_YELLOW='\033[33m'
+C_BLUE='\033[34m'
+C_CYAN='\033[36m'
+
+if [ ! -t 1 ] || [ "${NO_COLOR:-0}" = "1" ]; then
+    C_RESET=''; C_BOLD=''; C_RED=''; C_GREEN=''; C_YELLOW=''; C_BLUE=''; C_CYAN=''
+fi
+
+log()  { printf '%b[windrose]%b %s\n' "$C_CYAN" "$C_RESET" "$*"; }
+ok()   { printf '%b[windrose]%b %s\n' "$C_GREEN" "$C_RESET" "$*"; }
+warn() { printf '%b[windrose]%b %s\n' "$C_YELLOW" "$C_RESET" "$*"; }
+err()  { printf '%b[windrose]%b %s\n' "$C_RED" "$C_RESET" "$*" >&2; }
+
+banner() {
+    printf '%b' "$C_BOLD$C_BLUE"
+    cat <<'EOF'
++----------------------------------------------+
+|  Windrose Dedicated Server  -  by MrGuato    |
++----------------------------------------------+
+EOF
+    printf '%b\n' "$C_RESET"
+}
+
+require_env() {
+    if [ ! -f .env ]; then
+        err "Missing .env file. Run: ./windrose setup"
+        exit 1
+    fi
+}
+
+require_docker() {
+    if ! command -v docker >/dev/null 2>&1; then
+        err "Docker is not installed. See docs: docs/installation.md"
+        exit 1
+    fi
+    if ! docker compose version >/dev/null 2>&1; then
+        err "Docker Compose v2 plugin is not installed."
+        exit 1
+    fi
+}
+
+dc() {
+    # shellcheck disable=SC2086
+    $COMPOSE_BIN $COMPOSE_FILES "$@"
+}
+
+cmd_setup() {
+    banner
+    log "First-time setup"
+
+    if [ -f .env ]; then
+        warn ".env already exists. Edit it manually or remove it to re-run setup."
+        exit 0
+    fi
+
+    cp .env.example .env
+
+    read -r -p "Server name [MrGuato Windrose Server]: " name
+    name=${name:-MrGuato Windrose Server}
+    read -r -p "Server password (empty for none): " password
+    read -r -p "Max players [4]: " maxp
+    maxp=${maxp:-4}
+    read -r -p "Game port [7777]: " port
+    port=${port:-7777}
+    read -r -p "Query port [7778]: " qport
+    qport=${qport:-7778}
+
+    sed -i "s|^SERVER_NAME=.*|SERVER_NAME=$name|"     .env
+    sed -i "s|^SERVER_PASSWORD=.*|SERVER_PASSWORD=$password|" .env
+    sed -i "s|^MAX_PLAYERS=.*|MAX_PLAYERS=$maxp|"     .env
+    sed -i "s|^PORT=.*|PORT=$port|"                   .env
+    sed -i "s|^QUERYPORT=.*|QUERYPORT=$qport|"        .env
+
+    mkdir -p data steam-home backups logs
+    sudo chown -R 1000:1000 data steam-home 2>/dev/null || chown -R 1000:1000 data steam-home
+
+    ok "Setup complete. Wrote ./.env"
+    log "Next: ./windrose start"
+}
+
+cmd_start() {
+    require_docker
+    require_env
+    log "Starting server"
+    dc up -d
+    ok "Started. Tailing logs (Ctrl+C to detach):"
+    dc logs -f --tail 50 "$SERVICE"
+}
+
+cmd_stop() {
+    require_docker
+    log "Stopping server"
+    dc stop
+    ok "Stopped"
+}
+
+cmd_restart() {
+    require_docker
+    log "Restarting server"
+    dc restart
+    ok "Restarted"
+}
+
+cmd_down() {
+    require_docker
+    log "Removing container (data persists)"
+    dc down
+    ok "Down"
+}
+
+cmd_logs() {
+    require_docker
+    dc logs -f --tail "${1:-100}" "$SERVICE"
+}
+
+cmd_status() {
+    require_docker
+    banner
+    dc ps
+    echo
+    log "Health: $(docker inspect --format='{{.State.Health.Status}}' "$SERVICE" 2>/dev/null || echo 'n/a')"
+    log "Uptime: $(docker inspect --format='{{.State.StartedAt}}' "$SERVICE" 2>/dev/null || echo 'n/a')"
+    if [ -f data/R5/ServerDescription.json ]; then
+        local code name maxp pwd_set
+        code=$(jq -r '.ServerDescription_Persistent.InviteCode'        data/R5/ServerDescription.json 2>/dev/null || echo "?")
+        name=$(jq -r '.ServerDescription_Persistent.ServerName'        data/R5/ServerDescription.json 2>/dev/null || echo "?")
+        maxp=$(jq -r '.ServerDescription_Persistent.MaxPlayerCount'    data/R5/ServerDescription.json 2>/dev/null || echo "?")
+        pwd_set=$(jq -r '.ServerDescription_Persistent.IsPasswordProtected' data/R5/ServerDescription.json 2>/dev/null || echo "?")
+        echo
+        log "Server name:  $name"
+        log "Invite code:  $code"
+        log "Max players:  $maxp"
+        log "Password:     $pwd_set"
+    fi
+}
+
+cmd_invite() {
+    if [ ! -f data/R5/ServerDescription.json ]; then
+        err "ServerDescription.json not found yet. Server may still be initializing."
+        exit 1
+    fi
+    jq -r '.ServerDescription_Persistent.InviteCode' data/R5/ServerDescription.json
+}
+
+cmd_update() {
+    require_docker
+    log "Pulling latest image"
+    dc pull
+    log "Recreating container (SteamCMD will validate game files on start)"
+    dc up -d
+    ok "Update started. Tail logs to watch progress: ./windrose logs"
+}
+
+cmd_shell() {
+    require_docker
+    dc exec "$SERVICE" bash
+}
+
+cmd_backup() {
+    "$REPO_DIR/scripts/backup.sh" "$@"
+}
+
+cmd_restore() {
+    "$REPO_DIR/scripts/restore.sh" "$@"
+}
+
+cmd_build() {
+    require_docker
+    log "Building local image (uses docker-compose.dev.yml override)"
+    docker compose -f docker-compose.yml -f docker-compose.dev.yml build "$@"
+    ok "Built. To run the local image:"
+    echo "  IMAGE_REPOSITORY=windrose-dedicated-server IMAGE_TAG=dev ./windrose start"
+}
+
+cmd_help() {
+    banner
+    cat <<EOF
+Usage: ./windrose <command> [args]
+
+Setup
+  setup         First-time interactive setup; writes .env and creates dirs
+
+Lifecycle
+  start         Start the server in the background and tail logs
+  stop          Stop the server (container retained)
+  restart       Restart the container
+  down          Remove the container (data and saves persist)
+
+Visibility
+  status        Show container, health, and server info
+  logs [N]      Tail last N log lines (default 100)
+  invite        Print the current invite code
+  shell         Open a bash shell inside the container
+
+Maintenance
+  update        Pull latest image and recreate (SteamCMD update on start)
+  build         Build the image locally from the Dockerfile
+  backup        Snapshot saves and config to ./backups
+  restore FILE  Restore from a backup tarball
+
+  help          Show this help
+EOF
+}
+
+case "${1:-help}" in
+    setup)   shift; cmd_setup   "$@" ;;
+    start)   shift; cmd_start   "$@" ;;
+    stop)    shift; cmd_stop    "$@" ;;
+    restart) shift; cmd_restart "$@" ;;
+    down)    shift; cmd_down    "$@" ;;
+    logs)    shift; cmd_logs    "$@" ;;
+    status)  shift; cmd_status  "$@" ;;
+    invite)  shift; cmd_invite  "$@" ;;
+    update)  shift; cmd_update  "$@" ;;
+    shell)   shift; cmd_shell   "$@" ;;
+    backup)  shift; cmd_backup  "$@" ;;
+    restore) shift; cmd_restore "$@" ;;
+    build)   shift; cmd_build   "$@" ;;
+    help|-h|--help) cmd_help ;;
+    *)
+        err "Unknown command: $1"
+        cmd_help
+        exit 1
+        ;;
+esac

@@ -2,6 +2,7 @@
 data/
 steam-home/
 backups/
+logs/
 *.log
 *.tar.gz
 .idea/

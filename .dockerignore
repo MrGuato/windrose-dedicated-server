@@ -1,13 +1,14 @@
 .git
 .github
 .gitignore
+.gitattributes
 .dockerignore
 .env
 data/
 steam-home/
 backups/
+logs/
 docs/
-scripts/
 README.md
 LICENSE
 Makefile

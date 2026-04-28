@@ -15,7 +15,7 @@ if [ ! -d ./data ]; then
     exit 1
 fi
 
-echo "[backup] Creating archive: $ARCHIVE"
+echo "[backup] Creating $ARCHIVE"
 tar --warning=no-file-changed -czf "$ARCHIVE" \
     ./data/R5/Saved \
     ./data/R5/ServerDescription.json 2>/dev/null || {
@@ -25,5 +25,5 @@ tar --warning=no-file-changed -czf "$ARCHIVE" \
 echo "[backup] Pruning archives older than $RETENTION_DAYS days"
 find "$BACKUP_DIR" -name 'windrose-*.tar.gz' -mtime "+$RETENTION_DAYS" -delete
 
-echo "[backup] Done"
 ls -lh "$ARCHIVE"
+echo "[backup] Done"

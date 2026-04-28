@@ -1,40 +1,46 @@
 services:
   windrose:
-    image: ghcr.io/mrguato/windrose-dedicated-server:latest
-    # build: .
-    container_name: windrose
-    hostname: windrose
+    image: ${IMAGE_REPOSITORY:-ghcr.io/mrguato/windrose-dedicated-server}:${IMAGE_TAG:-latest}
+    pull_policy: always
+    container_name: ${CONTAINER_NAME:-windrose}
+    hostname: ${HOSTNAME_OVERRIDE:-windrose}
     restart: unless-stopped
     stop_grace_period: 90s
     network_mode: host
     env_file:
       - .env
     environment:
-      WINDROSE_APP_ID: 4129620
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      WINDROSE_APP_ID: ${WINDROSE_APP_ID:-4129620}
+      STEAM_LOGIN: ${STEAM_LOGIN:-anonymous}
+      STEAM_PASS: ${STEAM_PASS:-}
+      UPDATE_ON_START: ${UPDATE_ON_START:-true}
+      GENERATE_SETTINGS: ${GENERATE_SETTINGS:-true}
+      INVITE_CODE: ${INVITE_CODE:-}
+      SERVER_NAME: ${SERVER_NAME:-MrGuato Windrose Server}
+      SERVER_NOTE: ${SERVER_NOTE:-}
+      SERVER_PASSWORD: ${SERVER_PASSWORD:-}
+      MAX_PLAYERS: ${MAX_PLAYERS:-4}
+      P2P_PROXY_ADDRESS: ${P2P_PROXY_ADDRESS:-127.0.0.1}
+      MULTIHOME: ${MULTIHOME:-0.0.0.0}
+      WINEARCH: ${WINEARCH:-win64}
+      WINEPREFIX: ${WINEPREFIX:-/home/steam/.wine}
+      WINEDEBUG: -all
       DISPLAY: ":99"
-      WINEDEBUG: "-all"
+      PORT: ${PORT:-7777}
+      QUERYPORT: ${QUERYPORT:-7778}
     volumes:
       - ./data:/data
       - ./steam-home:/home/steam
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    tmpfs:
-      - /tmp:rw,nosuid,nodev,size=128m
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'WindroseServer-Win64-Shipping.exe' >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "/healthcheck.sh"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 5m
+      retries: 5
+      start_period: 300s
     logging:
       driver: json-file
       options:
         max-size: "20m"
         max-file: "5"
-    # deploy:
-    #   resources:
-    #     limits:
-    #       memory: 12G
-    #       cpus: "4.0"

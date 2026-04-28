@@ -1,0 +1,7 @@
+services:
+  windrose:
+    image: windrose-dedicated-server:dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+    pull_policy: never

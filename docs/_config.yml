@@ -1,5 +1,5 @@
 title: Windrose Dedicated Server
-description: Self-hosted Windrose dedicated server on Linux via Docker, SteamCMD, and Wine.
+description: Self-hosted Windrose dedicated server on Linux. Docker, SteamCMD, Wine. By MrGuato.
 remote_theme: just-the-docs/just-the-docs
 url: https://mrguato.github.io
 baseurl: /windrose-dedicated-server
@@ -9,6 +9,8 @@ color_scheme: dark
 aux_links:
   GitHub repo:
     - https://github.com/MrGuato/windrose-dedicated-server
+  Container image:
+    - https://github.com/MrGuato/windrose-dedicated-server/pkgs/container/windrose-dedicated-server
 
 aux_links_new_tab: true
 
@@ -21,7 +23,7 @@ search:
   preview_words_before: 5
   preview_words_after: 10
 
-footer_content: 'MIT licensed. Project by <a href="https://github.com/MrGuato">MrGuato</a>.'
+footer_content: 'MIT licensed. Built by <a href="https://github.com/MrGuato">MrGuato</a>.'
 
 plugins:
   - jekyll-remote-theme
