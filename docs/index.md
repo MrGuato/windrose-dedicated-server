@@ -42,7 +42,3 @@ Players join via Invite Code from the in-game menu. No port forwarding required.
 ## Source
 
 [github.com/MrGuato/windrose-dedicated-server](https://github.com/MrGuato/windrose-dedicated-server)
-
-## Credit
-
-Original approach by [UberDudePL/windrose-dedicated-server-docker](https://github.com/UberDudePL/windrose-dedicated-server-docker).

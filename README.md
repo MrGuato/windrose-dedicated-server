@@ -122,7 +122,3 @@ windrose-dedicated-server/
 ## License
 
 MIT. See [LICENSE](LICENSE).
-
-## Credits
-
-Original approach by [UberDudePL/windrose-dedicated-server-docker](https://github.com/UberDudePL/windrose-dedicated-server-docker). This is an independent re-implementation with my own CLI, docs, and CI.
